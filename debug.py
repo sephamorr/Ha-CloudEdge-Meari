@@ -36,28 +36,22 @@ class _Tee:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="CloudPlus local debug harness")
+    parser = argparse.ArgumentParser(description="CloudPlus local debug harness")
     parser.add_argument("--email", help="Account email; defaults to .env")
-    parser.add_argument(
-        "--password", help="Account password; defaults to .env")
-    parser.add_argument(
-        "--country-code", help="Country code; defaults to .env or FR")
-    parser.add_argument(
-        "--phone-code", help="Phone code; defaults to .env or 33")
+    parser.add_argument("--password", help="Account password; defaults to .env")
+    parser.add_argument("--country-code", help="Country code; defaults to .env or FR")
+    parser.add_argument("--phone-code", help="Phone code; defaults to .env or 33")
     parser.add_argument(
         "--profile",
         choices=AUTH_PROFILES,
         help="App profile; defaults to .env or cloudedge",
     )
-    parser.add_argument("--debug", action="store_true",
-                        help="Enable verbose logs")
+    parser.add_argument("--debug", action="store_true", help="Enable verbose logs")
 
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("list", help="Login and list cameras")
 
-    mqtt_p = commands.add_parser(
-        "mqtt", help="Run motion MQTT listener, log drops")
+    mqtt_p = commands.add_parser("mqtt", help="Run motion MQTT listener, log drops")
     mqtt_p.add_argument(
         "--duration", type=int, default=0, help="Seconds to run; 0 until Ctrl+C"
     )
@@ -68,8 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds between IoT config polls (temperature etc.); 0 disables",
     )
 
-    stream = commands.add_parser(
-        "stream", help="Open a camera stream in ffplay")
+    stream = commands.add_parser("stream", help="Open a camera stream in ffplay")
     stream.add_argument("--device-id", type=int, help="Camera deviceID")
     stream.add_argument("--sn", help="Camera serial number")
     stream.add_argument(
@@ -88,8 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--quality",
         help="AUTO, SD, HD, QHD, or numeric profile id; defaults to integration setting",
     )
-    stream.add_argument("--video-password",
-                        help="Camera video encryption password")
+    stream.add_argument("--video-password", help="Camera video encryption password")
     stream.add_argument(
         "--output-file",
         default="",
@@ -154,8 +146,7 @@ def main() -> int:
     if log_file_arg:
         log_path = os.path.abspath(os.path.expanduser(log_file_arg))
         os.makedirs(os.path.dirname(log_path) or ".", exist_ok=True)
-        log_fh = open(
-            log_path, "w", encoding="utf-8")  # pylint: disable=consider-using-with
+        log_fh = open(log_path, "w", encoding="utf-8")  # pylint: disable=consider-using-with
         sys.stdout = _Tee(sys.stdout, log_fh)
         sys.stderr = _Tee(sys.stderr, log_fh)
     logging.basicConfig(

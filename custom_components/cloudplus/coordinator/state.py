@@ -197,8 +197,7 @@ class CoordinatorStateMixin:
             if changed:
                 self._fire_update()
         except (OSError, RuntimeError, ValueError, KeyError) as exc:
-            _LOGGER.warning(
-                "Battery prefetch failed for %s: %s", self._sn_num, exc)
+            _LOGGER.warning("Battery prefetch failed for %s: %s", self._sn_num, exc)
 
     def prefetch_status(self, api: MeariApiClient) -> None:
         self.prefetch_lamp(api)
@@ -210,16 +209,14 @@ class CoordinatorStateMixin:
         try:
             iot = api.get_device_iot_config(self._sn_num)
         except (OSError, RuntimeError, ValueError, KeyError) as exc:
-            _LOGGER.debug(
-                "Lamp/status prefetch failed for %s: %s", self._sn_num, exc)
+            _LOGGER.debug("Lamp/status prefetch failed for %s: %s", self._sn_num, exc)
             return
         changed = self._apply_iot_values(iot)
         changed = self._apply_battery_info(iot) or changed
         changed = self._apply_video_encryption_info(iot) or changed
         lamp = self._as_int(self.get_iot_value(IOT_CODE_LAMP))
         if lamp is not None:
-            changed = changed or not self._has_lamp or self._lamp_on != (
-                lamp == 1)
+            changed = changed or not self._has_lamp or self._lamp_on != (lamp == 1)
             self._has_lamp = True
             self._lamp_on = lamp == 1
         if changed:
@@ -304,10 +301,8 @@ class CoordinatorStateMixin:
             self._fire_update()
 
     def _extend_live_deadline(self, seconds: float | None = None) -> None:
-        duration = float(
-            seconds if seconds is not None else self._motion_timeout)
-        self._live_deadline = max(
-            self._live_deadline, time.monotonic() + duration)
+        duration = float(seconds if seconds is not None else self._motion_timeout)
+        self._live_deadline = max(self._live_deadline, time.monotonic() + duration)
 
     def _note_motion(self, motion_type: str, event_image: bytes | None = None) -> None:
         if event_image:
@@ -415,18 +410,15 @@ class CoordinatorStateMixin:
                 return
             except (OSError, RuntimeError, ValueError, KeyError) as exc:
                 if attempt == 0:
-                    _LOGGER.debug("Battery poll retry for %s: %s",
-                                  self._sn_num, exc)
+                    _LOGGER.debug("Battery poll retry for %s: %s", self._sn_num, exc)
                     self._reauthenticate_api(api, "Battery poll")
                     continue
-                _LOGGER.debug("Battery poll failed for %s: %s",
-                              self._sn_num, exc)
+                _LOGGER.debug("Battery poll failed for %s: %s", self._sn_num, exc)
 
     def watch_iot_codes(self, codes: tuple[str, ...]) -> Callable[[], None]:
         """Register enabled entities' codes for periodic polling."""
         for code in codes:
-            self._watched_iot_codes[code] = self._watched_iot_codes.get(
-                code, 0) + 1
+            self._watched_iot_codes[code] = self._watched_iot_codes.get(code, 0) + 1
 
         def unwatch() -> None:
             for code in codes:
@@ -451,8 +443,7 @@ class CoordinatorStateMixin:
         # A direct read is live; the cloud copy is a fallback and can be stale.
         for server in (False, True):
             try:
-                values = api.get_device_iot_values(
-                    self._sn_num, codes, server=server)
+                values = api.get_device_iot_values(self._sn_num, codes, server=server)
             except (OSError, RuntimeError, ValueError, KeyError) as exc:
                 _LOGGER.debug(
                     "Dynamic status poll (server=%s) failed for %s: %s",
@@ -485,12 +476,10 @@ class CoordinatorStateMixin:
                 break
             except (OSError, RuntimeError, ValueError, KeyError) as exc:
                 if attempt == 0:
-                    _LOGGER.debug("Status poll retry for %s: %s",
-                                  self._sn_num, exc)
+                    _LOGGER.debug("Status poll retry for %s: %s", self._sn_num, exc)
                     self._reauthenticate_api(api, "Status poll")
                     continue
-                _LOGGER.debug("Status poll failed for %s: %s",
-                              self._sn_num, exc)
+                _LOGGER.debug("Status poll failed for %s: %s", self._sn_num, exc)
                 return
 
         changed = self._apply_iot_values(iot)
@@ -498,8 +487,7 @@ class CoordinatorStateMixin:
         changed = self._apply_video_encryption_info(iot) or changed
         lamp = self._as_int(self.get_iot_value(IOT_CODE_LAMP))
         if lamp is not None:
-            changed = changed or not self._has_lamp or self._lamp_on != (
-                lamp == 1)
+            changed = changed or not self._has_lamp or self._lamp_on != (lamp == 1)
             self._has_lamp = True
             self._lamp_on = lamp == 1
         if changed:

@@ -31,8 +31,7 @@ def _flatten(value, prefix: str = "") -> dict[str, object]:
 async def cmd_mqtt(args) -> int:
     mods = _bootstrap_integration_modules()
     api = _login_api_with_fallback(mods["api"].MeariApiClient, args)
-    motion = importlib.import_module(
-        "custom_components.cloudplus.coordinator.motion")
+    motion = importlib.import_module("custom_components.cloudplus.coordinator.motion")
 
     logging.getLogger("custom_components.cloudplus.coordinator.motion").setLevel(
         logging.DEBUG
@@ -86,9 +85,7 @@ async def cmd_mqtt(args) -> int:
         except (OSError, RuntimeError, ValueError, KeyError) as exc:
             print(f"  device {dev_id} events failed: {exc}")
             continue
-        show(
-            f"STARTUP events {dev_id}", events, f"startup.events.{dev_id}"
-        )
+        show(f"STARTUP events {dev_id}", events, f"startup.events.{dev_id}")
 
     def poll_iot(label: str) -> None:
         for dev_id, dev in api.devices.items():

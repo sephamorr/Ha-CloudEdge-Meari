@@ -105,13 +105,11 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
 
         self._device_id = int(device.get("deviceID", 0) or 0)
         self._sn_num = str(device.get("snNum", ""))
-        self._device_name = str(device.get(
-            "deviceName", self._sn_num) or self._sn_num)
+        self._device_name = str(device.get("deviceName", self._sn_num) or self._sn_num)
         self._device_category = str(device.get("_category", "")).lower()
         self._capabilities = parse_capabilities(device)
         battery_capable_doorbell = (
-            self._device_category in {
-                "doorbell", "picturedoorbell", "voicebell"}
+            self._device_category in {"doorbell", "picturedoorbell", "voicebell"}
             and (self._as_int(self._capabilities.get("bat")) or 0) > 0
         )
         self._is_snap = self._device_category == "snap" or battery_capable_doorbell
@@ -126,8 +124,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         self._latest_image_updated_at = 0.0
         self._latest_video_kf: bytes | None = None
         self._snapshot_conversion_enabled = bool(snapshot_conversion_enabled)
-        self._snapshot_convert_interval = max(
-            1.0, float(snapshot_min_interval))
+        self._snapshot_convert_interval = max(1.0, float(snapshot_min_interval))
         self._last_snapshot_convert_time = 0.0
         self._snapshot_requested_until = 0.0
         self._snapshot_convert_lock = threading.Lock()
@@ -191,12 +188,9 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         self._stream_idr_seed_generation = 0
         self._startup_safe_min_seed_generation = 0
 
-        quality_setting = entry.options.get(
-            CONF_STREAM_QUALITY) if entry else None
-        self._vvp_quality: int | None = parse_quality_setting(
-            device, quality_setting)
-        poll_setting = entry.options.get(
-            CONF_STATUS_POLL_INTERVAL) if entry else None
+        quality_setting = entry.options.get(CONF_STREAM_QUALITY) if entry else None
+        self._vvp_quality: int | None = parse_quality_setting(device, quality_setting)
+        poll_setting = entry.options.get(CONF_STATUS_POLL_INTERVAL) if entry else None
         try:
             poll_s = float(poll_setting)
         except (TypeError, ValueError):
@@ -278,8 +272,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
                 # This is the final boundary of a daemon thread. Letting an
                 # unforeseen library/protocol exception escape would freeze
                 # every entity at its last value until HA restarts.
-                _LOGGER.exception(
-                    "Unexpected coordinator session loop failure")
+                _LOGGER.exception("Unexpected coordinator session loop failure")
             self._available = False
             self._set_motion(False)
             self._set_camera_awake(False)
@@ -505,8 +498,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
             unsub()
         if listener is not None and not listener.has_callbacks:
             listener.stop()
-            listeners = self.hass.data.get(
-                DOMAIN, {}).get("_motion_listeners", {})
+            listeners = self.hass.data.get(DOMAIN, {}).get("_motion_listeners", {})
             if key is not None and listeners.get(key) is listener:
                 listeners.pop(key, None)
 
@@ -846,8 +838,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
                     return
                 self._stream_started_keyframe = True
 
-            payload = self._codec_params.with_params(
-                self._video_codec, payload)
+            payload = self._codec_params.with_params(self._video_codec, payload)
             if frame_is_keyframe:
                 self._remember_idle_frame(self._video_codec, payload)
             if self._hold_startup_mux(now):
@@ -859,8 +850,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
             )
             self._muxer.write_video(
                 payload,
-                pts_interval_s=self._next_live_video_interval(
-                    now, timestamp_ms),
+                pts_interval_s=self._next_live_video_interval(now, timestamp_ms),
             )
             if grab_only and frame_is_keyframe and self._p2p_streamer is not None:
                 self._p2p_streamer.request_stop()

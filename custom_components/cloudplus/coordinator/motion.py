@@ -213,7 +213,8 @@ class MotionEventListener:
         self._client = client
         try:
             client.connect_async(
-                self._api.mqtt_host, self._api.mqtt_port,
+                self._api.mqtt_host,
+                self._api.mqtt_port,
                 keepalive=self._api.mqtt_keepalive,
             )
             client.loop_start()
@@ -241,8 +242,7 @@ class MotionEventListener:
         if self._poll_thread is not None and self._poll_thread.is_alive():
             return
         self._stop_poll.clear()
-        self._poll_thread = threading.Thread(
-            target=self._alarm_poll_loop, daemon=True)
+        self._poll_thread = threading.Thread(target=self._alarm_poll_loop, daemon=True)
         self._poll_thread.start()
 
     def _stop_alarm_poll(self) -> None:
@@ -301,8 +301,7 @@ class MotionEventListener:
         if len(self._seen_alarm_keys) > _SEEN_ALARM_CAP:
             # Keep bounded; trimming oldest is fine because only events newer
             # than the last poll can ever be dispatched.
-            self._seen_alarm_keys = set(
-                list(self._seen_alarm_keys)[-_SEEN_ALARM_CAP:])
+            self._seen_alarm_keys = set(list(self._seen_alarm_keys)[-_SEEN_ALARM_CAP:])
 
     def _event_id(self, raw_event: dict, *, prefix: str = "") -> str:
         event_id = str(
@@ -360,8 +359,7 @@ class MotionEventListener:
             try:
                 events = self._api.get_device_events(device_id, day)
             except (OSError, RuntimeError, ValueError, KeyError) as exc:
-                _LOGGER.debug(
-                    "Event list poll failed for %s: %s", device_id, exc)
+                _LOGGER.debug("Event list poll failed for %s: %s", device_id, exc)
                 continue
             event_log_ok = True
             for raw_event in events:
