@@ -265,6 +265,7 @@ class MeariApiClient:
         self.access_key: str = ""
         self.mqtt_host: str = ""
         self.mqtt_port: int = 1883
+        self.mqtt_keepalive: int = 60
         self.mqtt_signature: str = ""
 
         # Devices
@@ -301,8 +302,17 @@ class MeariApiClient:
         self._encrypted_login = cfg.encrypted_login
         self.vvp_stream_flag = cfg.vvp_stream_flag
 
+    def _apply_mqtt_keepalive(self, mqtt_cfg: dict) -> None:
+        try:
+            value = int(mqtt_cfg.get("keepalive") or 0)
+        except (TypeError, ValueError):
+            return
+        if value > 0:
+            self.mqtt_keepalive = value
+
     def _apply_platform_defaults(self) -> None:
-        code = _region_code(self.api_server, self.openapi_server, self.platform_domain)
+        code = _region_code(
+            self.api_server, self.openapi_server, self.platform_domain)
         if not code:
             return
         suffix = f"{code}ce"
@@ -323,8 +333,10 @@ class MeariApiClient:
         if isinstance(pf_key, dict):
             self.access_id = pf_key.get("accessid") or self.access_id
             self.access_key = pf_key.get("accesskey") or self.access_key
-            self.openapi_server = pf_key.get("openapiDomain") or self.openapi_server
-            self.platform_domain = pf_key.get("platformDomain") or self.platform_domain
+            self.openapi_server = pf_key.get(
+                "openapiDomain") or self.openapi_server
+            self.platform_domain = pf_key.get(
+                "platformDomain") or self.platform_domain
 
         mqtt_cfg = iot.get("mqtt")
         if isinstance(mqtt_cfg, dict):
@@ -333,6 +345,7 @@ class MeariApiClient:
                 self.mqtt_port = int(mqtt_cfg.get("port") or self.mqtt_port)
             except (TypeError, ValueError):
                 pass
+            self._apply_mqtt_keepalive(mqtt_cfg)
 
         self._apply_platform_defaults()
 
@@ -604,6 +617,7 @@ class MeariApiClient:
             self.mqtt_port = int(mqtt_cfg.get("port") or self.mqtt_port)
         except (TypeError, ValueError):
             pass
+        self._apply_mqtt_keepalive(mqtt_cfg)
         self.mqtt_signature = pf.get("mqttSignature", "")
 
         # Decrypt platform signature for OpenAPI credentials
@@ -632,7 +646,8 @@ class MeariApiClient:
         target: dict[Any, dict],
         home_id: Optional[str] = None,
     ) -> None:
-        category_by_key = {category.lower(): category for category in DEVICE_CATEGORIES}
+        category_by_key = {
+            category.lower(): category for category in DEVICE_CATEGORIES}
 
         def infer_category(dev: dict[str, Any], current: str | None) -> str:
             if current:
@@ -691,7 +706,8 @@ class MeariApiClient:
         )
         result_code = str(data.get("resultCode", ""))
         if result_code not in {"1001", "1107"}:
-            raise RuntimeError(f"Home device list failed for home {home_id}: {data}")
+            raise RuntimeError(
+                f"Home device list failed for home {home_id}: {data}")
         devices: dict[Any, dict] = {}
         self._collect_devices_from_payload(data, devices, home_id=home_id)
         return devices
@@ -704,7 +720,8 @@ class MeariApiClient:
         # Default/home API (works for owner accounts and some shared setups).
         default_payload: Optional[dict[str, Any]] = None
         try:
-            default_payload = self._post("/v1/app/device/info/get", {"funSwitch": "1"})
+            default_payload = self._post(
+                "/v1/app/device/info/get", {"funSwitch": "1"})
         except (OSError, ValueError, KeyError, RuntimeError) as err:
             _LOGGER.debug("Default device list failed: %s", err)
 
@@ -713,7 +730,8 @@ class MeariApiClient:
             if default_result_code == "1001":
                 self._collect_devices_from_payload(default_payload, devices)
             else:
-                _LOGGER.debug("Default device list returned %s", default_result_code)
+                _LOGGER.debug("Default device list returned %s",
+                              default_result_code)
 
         # Multi-home fallback/augmentation for invited/family homes.
         try:
@@ -731,7 +749,8 @@ class MeariApiClient:
                 home_devices = self._get_home_devices(str(home_id))
                 devices.update(home_devices)
             except (OSError, ValueError, KeyError, RuntimeError) as err:
-                _LOGGER.debug("Home device list failed for home %s: %s", home_id, err)
+                _LOGGER.debug(
+                    "Home device list failed for home %s: %s", home_id, err)
 
         if not devices:
             _LOGGER.debug(
@@ -869,22 +888,28 @@ class MeariApiClient:
         self,
         sn_num: str,
         codes: list[str] | tuple[str, ...],
+        *,
+        server: bool = False,
     ) -> dict[str, Any]:
-        """Fetch selected IoT values for a device via OpenAPI."""
+        """Fetch selected IoT values for a device via OpenAPI.
+
+        ``server=True`` reads the cloud copy, which works for sleeping devices.
+        """
         dev_uuid = format_sn(sn_num)
         params_payload = json.dumps(
-            {"code": 100001, "action": "get", "name": "iot", "iot": list(codes)},
+            {"code": 100001, "action": "get",
+                "name": "iot", "iot": list(codes)},
             separators=(",", ":"),
         )
         params_b64 = base64.b64encode(params_payload.encode()).decode()
-        resp = self._openapi_get(
-            "/openapi/device/config",
-            {
-                "action": "get",
-                "params": params_b64,
-                "deviceid": dev_uuid,
-            },
-        )
+        query = {
+            "action": "get",
+            "params": params_b64,
+            "deviceid": dev_uuid,
+        }
+        if server:
+            query["target"] = "server"
+        resp = self._openapi_get("/openapi/device/config", query)
         if "errid" in resp:
             raise RuntimeError(f"Device IoT values failed: {resp}")
         return resp.get("iot", {})
@@ -917,11 +942,13 @@ class MeariApiClient:
         """
         ps, ts = PTZ_DIRECTIONS.get(direction, (0, 0))
         code = IOT_CODE_PTZ2_START if use_ptz2 else IOT_CODE_PTZ_START
-        value_str = json.dumps({"ps": ps, "ts": ts, "zs": 0}, separators=(",", ":"))
+        value_str = json.dumps(
+            {"ps": ps, "ts": ts, "zs": 0}, separators=(",", ":"))
 
         dev_uuid = format_sn(sn_num)
         params_payload = json.dumps(
-            {"code": 100001, "action": "set", "name": "iot", "iot": {code: value_str}},
+            {"code": 100001, "action": "set",
+                "name": "iot", "iot": {code: value_str}},
             separators=(",", ":"),
         )
         params_b64 = base64.b64encode(params_payload.encode()).decode()
@@ -964,7 +991,8 @@ class MeariApiClient:
             dev_uuid = format_sn(sn_num)
             sid = (dev_uuid + str(int(time.time() * 1000)))[:30]
             try:
-                sig, timeout = self._openapi_signature("/openapi/device/awaken", "set")
+                sig, timeout = self._openapi_signature(
+                    "/openapi/device/awaken", "set")
                 params = {
                     "accessid": self.access_id,
                     "expires": timeout,
@@ -983,7 +1011,8 @@ class MeariApiClient:
 
         # Method 2: Bell remote wake
         try:
-            self._post("/v1/app/bell/remote/wake", {"deviceID": str(device_id)})
+            self._post("/v1/app/bell/remote/wake",
+                       {"deviceID": str(device_id)})
             success = True
         except (OSError, ValueError, KeyError, RuntimeError) as e:
             _LOGGER.debug("Bell wake failed: %s", e)

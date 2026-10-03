@@ -13,12 +13,16 @@ from homeassistant.core import HomeAssistant
 
 from ..api import MeariApiClient
 from ..const import (
+    CONF_STATUS_POLL_INTERVAL,
     CONF_STREAM_QUALITY,
     DEFAULT_APP_PROFILE,
     DEFAULT_COUNTRY_CODE,
     DEFAULT_MOTION_TIMEOUT,
     DEFAULT_PHONE_CODE,
+    DEFAULT_STATUS_POLL_INTERVAL,
     DOMAIN,
+    MAX_STATUS_POLL_INTERVAL,
+    MIN_STATUS_POLL_INTERVAL,
 )
 from ..p2p_streamer import (
     ADAPTIVE_STREAM_ID,
@@ -58,7 +62,6 @@ IDLE_FRAME_RETRY_MAX_S = 180.0
 IDLE_GRAB_WAKE_RETRY_S = 8.0
 IDLE_GRAB_STREAM_RETRY_S = 1.5
 BATTERY_POLL_INTERVAL = 300.0
-STATUS_POLL_INTERVAL = 300.0
 LIVE_VIDEO_STALL_RESTART_S = 12.0
 LIVE_STARTUP_STALL_RESTART_S = 25.0
 LIVE_VIDEO_MIN_INTERVAL = 1.0 / 30.0
@@ -102,15 +105,18 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
 
         self._device_id = int(device.get("deviceID", 0) or 0)
         self._sn_num = str(device.get("snNum", ""))
-        self._device_name = str(device.get("deviceName", self._sn_num) or self._sn_num)
+        self._device_name = str(device.get(
+            "deviceName", self._sn_num) or self._sn_num)
         self._device_category = str(device.get("_category", "")).lower()
         self._capabilities = parse_capabilities(device)
         battery_capable_doorbell = (
-            self._device_category in {"doorbell", "picturedoorbell", "voicebell"}
+            self._device_category in {
+                "doorbell", "picturedoorbell", "voicebell"}
             and (self._as_int(self._capabilities.get("bat")) or 0) > 0
         )
         self._is_snap = self._device_category == "snap" or battery_capable_doorbell
         self._iot_data: dict[int | str, Any] = {}
+        self._watched_iot_codes: dict[str, int] = {}
 
         self._available = False
         self._camera_awake = False
@@ -120,7 +126,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         self._latest_image_updated_at = 0.0
         self._latest_video_kf: bytes | None = None
         self._snapshot_conversion_enabled = bool(snapshot_conversion_enabled)
-        self._snapshot_convert_interval = max(1.0, float(snapshot_min_interval))
+        self._snapshot_convert_interval = max(
+            1.0, float(snapshot_min_interval))
         self._last_snapshot_convert_time = 0.0
         self._snapshot_requested_until = 0.0
         self._snapshot_convert_lock = threading.Lock()
@@ -184,8 +191,19 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         self._stream_idr_seed_generation = 0
         self._startup_safe_min_seed_generation = 0
 
-        quality_setting = entry.options.get(CONF_STREAM_QUALITY) if entry else None
-        self._vvp_quality: int | None = parse_quality_setting(device, quality_setting)
+        quality_setting = entry.options.get(
+            CONF_STREAM_QUALITY) if entry else None
+        self._vvp_quality: int | None = parse_quality_setting(
+            device, quality_setting)
+        poll_setting = entry.options.get(
+            CONF_STATUS_POLL_INTERVAL) if entry else None
+        try:
+            poll_s = float(poll_setting)
+        except (TypeError, ValueError):
+            poll_s = DEFAULT_STATUS_POLL_INTERVAL
+        self._status_poll_interval = max(
+            MIN_STATUS_POLL_INTERVAL, min(MAX_STATUS_POLL_INTERVAL, poll_s)
+        )
         self._codec_params = CodecParameterCache()
         self._stream_started_keyframe = False
 
@@ -260,7 +278,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
                 # This is the final boundary of a daemon thread. Letting an
                 # unforeseen library/protocol exception escape would freeze
                 # every entity at its last value until HA restarts.
-                _LOGGER.exception("Unexpected coordinator session loop failure")
+                _LOGGER.exception(
+                    "Unexpected coordinator session loop failure")
             self._available = False
             self._set_motion(False)
             self._set_camera_awake(False)
@@ -289,8 +308,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
             if now - last_battery_poll >= BATTERY_POLL_INTERVAL:
                 self._poll_battery()
                 last_battery_poll = now
-            if now - last_status_poll >= STATUS_POLL_INTERVAL:
-                self._poll_status()
+            if now - last_status_poll >= self._status_poll_interval:
+                self._poll_dynamic_status()
                 last_status_poll = now
 
             if (
@@ -341,8 +360,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
                 self._stop_streamer(join_timeout=2)
                 self._muxer.stop()
                 self._stream_server.reset_bootstrap()
-            if now - last_status_poll >= STATUS_POLL_INTERVAL:
-                self._poll_status()
+            if now - last_status_poll >= self._status_poll_interval:
+                self._poll_dynamic_status()
                 last_status_poll = now
             self._consume_wake_event()
             should_stream = (
@@ -486,7 +505,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
             unsub()
         if listener is not None and not listener.has_callbacks:
             listener.stop()
-            listeners = self.hass.data.get(DOMAIN, {}).get("_motion_listeners", {})
+            listeners = self.hass.data.get(
+                DOMAIN, {}).get("_motion_listeners", {})
             if key is not None and listeners.get(key) is listener:
                 listeners.pop(key, None)
 
@@ -826,7 +846,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
                     return
                 self._stream_started_keyframe = True
 
-            payload = self._codec_params.with_params(self._video_codec, payload)
+            payload = self._codec_params.with_params(
+                self._video_codec, payload)
             if frame_is_keyframe:
                 self._remember_idle_frame(self._video_codec, payload)
             if self._hold_startup_mux(now):
@@ -838,7 +859,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
             )
             self._muxer.write_video(
                 payload,
-                pts_interval_s=self._next_live_video_interval(now, timestamp_ms),
+                pts_interval_s=self._next_live_video_interval(
+                    now, timestamp_ms),
             )
             if grab_only and frame_is_keyframe and self._p2p_streamer is not None:
                 self._p2p_streamer.request_stop()

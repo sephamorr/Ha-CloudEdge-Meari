@@ -38,6 +38,7 @@
         "data": {
           "password": "Account password (leave empty to keep current)",
           "video_password": "Video encryption password (E2EE)",
+          "status_poll_interval": "Sensor poll interval (seconds)",
           "country_code": "Country code",
           "phone_code": "Phone country code",
           "app_profile": "App profile"
@@ -50,24 +51,40 @@
   },
   "entity": {
     "binary_sensor": {
-      "motion": { "name": "Motion" },
-      "awake": { "name": "Camera Awake" },
-      "charging": { "name": "Charging" }
+      "motion": {
+        "name": "Motion"
+      },
+      "awake": {
+        "name": "Camera Awake"
+      },
+      "charging": {
+        "name": "Charging"
+      }
     },
     "button": {
-      "wake": { "name": "Wake Camera" }
+      "wake": {
+        "name": "Wake Camera"
+      }
     },
     "camera": {
-      "camera": { "name": "Camera" }
+      "camera": {
+        "name": "Camera"
+      }
     },
     "number": {
-      "motion_timeout": { "name": "Motion Timeout" }
+      "motion_timeout": {
+        "name": "Motion Timeout"
+      }
     },
     "sensor": {
-      "battery": { "name": "Battery" }
+      "battery": {
+        "name": "Battery"
+      }
     },
     "switch": {
-      "motion_wake": { "name": "Wake on Motion" }
+      "motion_wake": {
+        "name": "Wake on Motion"
+      }
     }
   }
 }

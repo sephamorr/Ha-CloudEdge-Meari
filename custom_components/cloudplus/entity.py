@@ -21,6 +21,8 @@ class CloudEdgeMeariEntity(Entity):
     """
 
     _attr_has_entity_name = True
+    # IoT codes polled periodically while this entity is enabled in HA.
+    _polled_iot_codes: tuple[str, ...] = ()
 
     def __init__(
         self, coordinator: CloudEdgeMeariCoordinator, entry: ConfigEntry
@@ -35,15 +37,22 @@ class CloudEdgeMeariEntity(Entity):
             "model": coordinator.device_model,
         }
         self._unsub_update: Any = None
+        self._unwatch_iot: Any = None
 
     async def async_added_to_hass(self) -> None:
         self._unsub_update = self._coordinator.register_update_callback(
             self._handle_update
         )
+        if self._polled_iot_codes:
+            self._unwatch_iot = self._coordinator.watch_iot_codes(
+                self._polled_iot_codes
+            )
 
     async def async_will_remove_from_hass(self) -> None:
         if self._unsub_update:
             self._unsub_update()
+        if self._unwatch_iot:
+            self._unwatch_iot()
 
     @callback
     def _handle_update(self) -> None:

@@ -24,11 +24,15 @@ from .const import (
     CONF_PHONE_CODE,
     CONF_PASSWORD,
     CONF_SN_NUM,
+    CONF_STATUS_POLL_INTERVAL,
     CONF_VIDEO_PASSWORD,
     DEFAULT_APP_PROFILE,
     DEFAULT_COUNTRY_CODE,
     DEFAULT_PHONE_CODE,
+    DEFAULT_STATUS_POLL_INTERVAL,
     DOMAIN,
+    MAX_STATUS_POLL_INTERVAL,
+    MIN_STATUS_POLL_INTERVAL,
 )
 from .api import build_api_client
 
@@ -171,14 +175,23 @@ class CloudEdgeMeariOptionsFlow(OptionsFlow):
         current_video_password = _clean_optional_text(
             current_options.get(CONF_VIDEO_PASSWORD)
         )
+        current_poll_interval = int(
+            current_options.get(CONF_STATUS_POLL_INTERVAL,
+                                DEFAULT_STATUS_POLL_INTERVAL)
+        )
 
         if user_input is not None:
             new_options = dict(current_options)
-            video_password = _clean_optional_text(user_input.get(CONF_VIDEO_PASSWORD))
+            video_password = _clean_optional_text(
+                user_input.get(CONF_VIDEO_PASSWORD))
             if video_password:
                 new_options[CONF_VIDEO_PASSWORD] = video_password
             else:
                 new_options.pop(CONF_VIDEO_PASSWORD, None)
+            new_options[CONF_STATUS_POLL_INTERVAL] = int(
+                user_input.get(CONF_STATUS_POLL_INTERVAL,
+                               current_poll_interval)
+            )
             self.hass.config_entries.async_update_entry(
                 self._config_entry, options=new_options
             )
@@ -193,6 +206,15 @@ class CloudEdgeMeariOptionsFlow(OptionsFlow):
                     vol.Optional(
                         CONF_VIDEO_PASSWORD, default=current_video_password
                     ): str,
+                    vol.Optional(
+                        CONF_STATUS_POLL_INTERVAL, default=current_poll_interval
+                    ): vol.All(
+                        vol.Coerce(int),
+                        vol.Range(
+                            min=MIN_STATUS_POLL_INTERVAL,
+                            max=MAX_STATUS_POLL_INTERVAL,
+                        ),
+                    ),
                 }
             ),
         )
@@ -228,7 +250,8 @@ class CloudEdgeMeariOptionsFlow(OptionsFlow):
             new_data[CONF_PHONE_CODE] = _normalize_phone_code(
                 user_input.get(CONF_PHONE_CODE, phone_code)
             )
-            new_data[CONF_APP_PROFILE] = user_input.get(CONF_APP_PROFILE, app_profile)
+            new_data[CONF_APP_PROFILE] = user_input.get(
+                CONF_APP_PROFILE, app_profile)
 
             self.hass.config_entries.async_update_entry(
                 self._config_entry, data=new_data
@@ -240,7 +263,8 @@ class CloudEdgeMeariOptionsFlow(OptionsFlow):
                 if cam_entry.data.get("account_entry_id") != account_entry_id:
                     continue
                 # Fetch fresh entry from registry to ensure options are up-to-date
-                fresh_cam = self.hass.config_entries.async_get_entry(cam_entry.entry_id)
+                fresh_cam = self.hass.config_entries.async_get_entry(
+                    cam_entry.entry_id)
                 if fresh_cam is None:
                     continue
                 cam_data = dict(fresh_cam.data)

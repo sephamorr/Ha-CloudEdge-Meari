@@ -10,8 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
-from .coordinator import CloudEdgeMeariCoordinator
+from .const import DOMAIN, IOT_CODE_LAMPfrom .coordinator import CloudEdgeMeariCoordinator
 from .entity import CloudEdgeMeariEntity, CloudEdgeMeariIotEntity
 from .meari_commands import (
     ABNORMAL_NOISE_ENABLE,
@@ -72,7 +71,8 @@ IOT_SWITCHES: tuple[IotSwitchSpec, ...] = (
         "Human Tracking",
         "mdi:target-account",
     ),
-    IotSwitchSpec("noise_det", SOUND_DET_ENABLE, "Sound Detection", "mdi:ear-hearing"),
+    IotSwitchSpec("noise_det", SOUND_DET_ENABLE,
+                  "Sound Detection", "mdi:ear-hearing"),
     IotSwitchSpec(
         "cry_det",
         CRY_DET_ENABLE,
@@ -102,16 +102,19 @@ IOT_SWITCHES: tuple[IotSwitchSpec, ...] = (
     ),
     IotSwitchSpec("sleep_mode", SLEEP_MODE, "Sleep Mode", "mdi:sleep"),
     IotSwitchSpec("rgb_light", RGB_LIGHT_SWITCH, "RGB Light", "mdi:palette"),
-    IotSwitchSpec("anti_jamming", ANTI_JAMMING, "Anti-Jamming", "mdi:shield-check"),
+    IotSwitchSpec("anti_jamming", ANTI_JAMMING,
+                  "Anti-Jamming", "mdi:shield-check"),
     IotSwitchSpec(
         "abnormal_noise",
         ABNORMAL_NOISE_ENABLE,
         "Abnormal Noise",
         "mdi:alert-decagram",
     ),
-    IotSwitchSpec("ptz_patrol", PTZ_PATROL, "PTZ Patrol", "mdi:pan-horizontal"),
+    IotSwitchSpec("ptz_patrol", PTZ_PATROL,
+                  "PTZ Patrol", "mdi:pan-horizontal"),
     IotSwitchSpec("laser", LASER_SWITCH, "Laser Toy", "mdi:laser-pointer"),
-    IotSwitchSpec("pet_alarm", PET_ALARM_ENABLE, "Pet Alarm", "mdi:bell-alert"),
+    IotSwitchSpec("pet_alarm", PET_ALARM_ENABLE,
+                  "Pet Alarm", "mdi:bell-alert"),
     IotSwitchSpec(
         "pet_alarm",
         PET_THROW_WARNING,
@@ -218,6 +221,7 @@ class CloudEdgeMeariLampSwitch(CloudEdgeMeariEntity, SwitchEntity):
 
     _attr_name = "Lamp"
     _attr_icon = "mdi:lightbulb"
+    _polled_iot_codes = (IOT_CODE_LAMP,)
 
     def __init__(
         self, coordinator: CloudEdgeMeariCoordinator, entry: ConfigEntry

@@ -148,6 +148,7 @@ class CloudEdgeMeariIotSensor(CloudEdgeMeariIotNumericEntity, SensorEntity):
         self._attr_native_unit_of_measurement = spec.unit
         self._attr_suggested_display_precision = spec.precision
         self._attr_unique_id = f"{coordinator.device_uuid}_iot_sensor_{spec.code}"
+        self._polled_iot_codes = (str(spec.code),)
 
 
 class CloudEdgeMeariChargeStatusSensor(CloudEdgeMeariEntity, SensorEntity):
