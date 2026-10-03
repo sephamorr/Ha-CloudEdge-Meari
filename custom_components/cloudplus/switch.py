@@ -10,7 +10,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, IOT_CODE_LAMPfrom .coordinator import CloudEdgeMeariCoordinator
+from .const import DOMAIN, IOT_CODE_LAMP
+from .coordinator import CloudEdgeMeariCoordinator
 from .entity import CloudEdgeMeariEntity, CloudEdgeMeariIotEntity
 from .meari_commands import (
     ABNORMAL_NOISE_ENABLE,
