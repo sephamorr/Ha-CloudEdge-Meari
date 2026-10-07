@@ -70,7 +70,7 @@ See [`const.py`](../custom_components/cloudplus/const.py) `ALARM_TYPE_NAMES`
 and `MOTION_ALARM_TYPES` for the active mapping. The motion binary sensor
 fires for any alarm in `MOTION_ALARM_TYPES = {1, 2, 11, 20}` (PIR, Motion,
 Human body, Person). Other alarm types (Visitor, Noise, Package, etc.) are
-classified by `motion_event.py` but currently routed only to logs / future
+classified by `activity_event.py` but currently routed only to logs / future
 event sensors.
 
 ## Fallback: cloud event polling
@@ -98,7 +98,7 @@ reasons, all of which broke motion for real users:
   first — classified it as a non-motion event, so the sensor never fired.
   `event/list` always returns the full day's events regardless of read-state.
 - **Correct alarm type.** `event/list` entries carry the actual `eventType`
-  (e.g. `2` = Motion), so `parse_motion_event` classifies them correctly
+  (e.g. `2` = Motion), so `parse_activity_event` classifies them correctly
   without relying on the ambiguous `evt` flag.
 - **Stable de-dup.** Each entry has a unique `msgID`; we remember
   `(deviceID, msgID)` so the same event is never re-fired. The seed pass at
@@ -116,7 +116,7 @@ reported device and local event time (or a stable raw-row fallback), seeded on
 startup without dispatching, and parsed with `imageAlertType` so `evt` still
 behaves as a read/unread flag rather than the alarm type.
 
-`MotionEventListener` polls every `ALARM_POLL_INTERVAL` (15 s), so worst-case
+`ActivityEventListener` polls every `ALARM_POLL_INTERVAL` (15 s), so worst-case
 motion latency without MQTT is ~15 s.
 
 All cloud requests have finite connect/read timeouts. If both event-log

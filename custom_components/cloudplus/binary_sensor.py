@@ -1,4 +1,4 @@
-"""Binary sensor platform for CloudEdge / Meari — motion & awake state."""
+"""Binary sensor platform for CloudEdge / Meari — awake & charging state."""
 
 from __future__ import annotations
 
@@ -27,47 +27,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up CloudEdge / Meari binary sensors from a config entry."""
     coord: CloudEdgeMeariCoordinator = hass.data[DOMAIN][entry.entry_id]
-    entities = [CloudEdgeMeariMotionSensor(coord, entry)]
+    entities: list[BinarySensorEntity] = []
     if coord.is_battery_camera:
         entities.append(CloudEdgeMeariAwakeSensor(coord, entry))
         entities.append(CloudEdgeMeariChargingSensor(coord, entry))
     async_add_entities(entities)
-
-
-class CloudEdgeMeariMotionSensor(CloudEdgeMeariEntity, BinarySensorEntity):
-    """Binary sensor for motion detection."""
-
-    _attr_name = "Motion"
-    _attr_device_class = BinarySensorDeviceClass.MOTION
-
-    def __init__(
-        self, coordinator: CloudEdgeMeariCoordinator, entry: ConfigEntry
-    ) -> None:
-        super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{coordinator.device_uuid}_motion"
-        self._unsub_motion: Any = None
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        self._unsub_motion = self._coordinator.register_motion_callback(
-            self._handle_update
-        )
-
-    async def async_will_remove_from_hass(self) -> None:
-        await super().async_will_remove_from_hass()
-        if self._unsub_motion:
-            self._unsub_motion()
-
-    @property
-    def is_on(self) -> bool:
-        return self._coordinator.motion_detected
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        attrs: dict[str, Any] = {}
-        if self._coordinator.motion_type:
-            attrs["motion_type"] = self._coordinator.motion_type
-        return attrs
 
 
 class CloudEdgeMeariAwakeSensor(CloudEdgeMeariEntity, BinarySensorEntity):

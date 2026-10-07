@@ -51,7 +51,6 @@
   },
   "entity": {
     "binary_sensor": {
-      "motion": { "name": "Motion" },
       "awake": { "name": "Camera Awake" },
       "charging": { "name": "Charging" }
     },

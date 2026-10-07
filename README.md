@@ -140,7 +140,7 @@ discovered from the camera's IoT model values.
 | Entity              | Platform        | Purpose |
 |---------------------|-----------------|---------|
 | Camera              | `camera`        | Live preview + `stream_source` for go2rtc / Frigate. |
-| Motion              | `binary_sensor` | PIR / motion / AI alert (person, pet, package, etc.). |
+| Activity            | `sensor`        | PIR / motion / AI alert (person, pet, package, etc.), noise and baby cry; state is `none` or the event type. |
 | Camera Awake        | `binary_sensor` | True while the camera is actively streaming. |
 | Charging            | `binary_sensor` | USB charging state (battery cameras). |
 | Battery             | `sensor`        | Charge percentage (battery cameras). |
@@ -356,7 +356,7 @@ Each layer is documented in detail under [docs/](docs/).
 | [docs/architecture.md](docs/architecture.md) | Contributors | Code layout (custom_components, p2p_streamer, coordinator, debug_tools). |
 | [docs/protocol.md](docs/protocol.md) | Protocol hackers | Discovery, signaling, ICE/TURN, KCP, VVP, media frames. |
 | [docs/streaming.md](docs/streaming.md) | Contributors | Live-start patterns, source-idle recovery, MPEG-TS fan-out. |
-| [docs/motion-events.md](docs/motion-events.md) | Contributors | Meari MQTT topics, payload shapes, fallback notification API. |
+| [docs/activity-events.md](docs/activity-events.md) | Contributors | Meari MQTT topics, payload shapes, fallback notification API. |
 | [docs/diagnosis.md](docs/diagnosis.md) | Contributors | `debug.py` usage, log signals, how to triage stalls. |
 
 ---

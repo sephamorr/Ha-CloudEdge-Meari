@@ -77,8 +77,8 @@ class CloudEdgeMeariCamera(CloudEdgeMeariEntity, Camera):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
         attrs: dict[str, Any] = {}
-        if self._coordinator.motion_type:
-            attrs["motion_type"] = self._coordinator.motion_type
+        if self._coordinator.activity_type:
+            attrs["event_type"] = self._coordinator.activity_type
         if self._coordinator.device_id:
             attrs["device_id"] = self._coordinator.device_id
         attrs["sn_num"] = self._coordinator.device_uuid

@@ -25,7 +25,7 @@ def load_platforms() -> dict[str, ModuleType]:
         },
         "homeassistant.components.sensor": {
             "SensorEntity": type("SensorEntity", (), {}),
-            "SensorDeviceClass": SimpleNamespace(TEMPERATURE="temperature", HUMIDITY="humidity", BATTERY="battery"),
+            "SensorDeviceClass": SimpleNamespace(TEMPERATURE="temperature", HUMIDITY="humidity", BATTERY="battery", ENUM="enum"),
             "SensorStateClass": SimpleNamespace(MEASUREMENT="measurement"),
         },
         "homeassistant.components.number": {
@@ -94,7 +94,11 @@ class SensorTests(unittest.IsolatedAsyncioTestCase):
         hass = SimpleNamespace(data={SENSOR.DOMAIN: {entry.entry_id: coord}})
         add_entities = Mock()
         await SENSOR.async_setup_entry(hass, entry, add_entities)
-        return {entity._spec.code: entity for entity in add_entities.call_args.args[0]}
+        return {
+            entity._spec.code: entity
+            for entity in add_entities.call_args.args[0]
+            if hasattr(entity, "_spec")
+        }
 
     async def test_legacy_readings_survive_missing_flags(self):
         entities = await self.sensors({}, {1008: 21560, 1009: 60})

@@ -13,7 +13,7 @@ from typing import Any, Callable
 import paho.mqtt.client as mqtt
 
 from ..api import MeariApiClient
-from ..motion_event import parse_motion_event
+from ..activity_event import parse_activity_event
 
 _LOGGER = logging.getLogger(__name__)
 ALARM_POLL_INTERVAL = 15.0
@@ -108,7 +108,7 @@ def _event_topics(api: MeariApiClient) -> list[str]:
     return list(dict.fromkeys(topics))
 
 
-class MotionEventListener:
+class ActivityEventListener:
     """Account-scoped Meari MQTT listener that dispatches camera motion events."""
 
     def __init__(self, api: MeariApiClient) -> None:
@@ -400,11 +400,13 @@ class MotionEventListener:
 
     def _handle_payload(self, payload: bytes) -> None:
         try:
-            event = parse_motion_event(payload)
+            event = parse_activity_event(payload)
         except (ValueError, KeyError, TypeError) as exc:
             _LOGGER.debug("MQTT motion payload parse failed: %s", exc)
             return
-        if not event or not event["is_motion"]:
+        if not event or not event["is_activity"]:
+            if event:
+                _LOGGER.debug("Ignoring non-motion event %s", event["evt_name"])
             return
 
         device_id = event["device_id"]
@@ -412,7 +414,7 @@ class MotionEventListener:
         if not device_id and not license_id:
             return
 
-        motion_type = str(event["evt_name"])
+        activity_type = str(event["evt_name"])
         raw_event = event["raw"]
         image_url = _find_image_url(raw_event)
         encrypted_image = (
@@ -424,4 +426,4 @@ class MotionEventListener:
                 if encrypted_image
                 else None
             )
-            callback(motion_type, event_image)
+            callback(activity_type, event_image)

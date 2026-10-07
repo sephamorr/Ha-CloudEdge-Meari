@@ -92,7 +92,7 @@ adding suppressions.
 - **Don't fabricate frames.** On stall: KCP recovery → `START_LIVE`
   re-issue → reconnect. Old frames create visible time travel.
 - **One Meari MQTT session per account.** See
-  [docs/motion-events.md](docs/motion-events.md).
+  [docs/activity-events.md](docs/activity-events.md).
 - **Config-entry topology**: one account entry (no `sn_num`) + N camera
   entries. `_linked_account_entry()` walks camera → account.
 
@@ -128,5 +128,5 @@ traffic beyond a normal stream.
 | Where does feature X live? | [docs/architecture.md](docs/architecture.md) |
 | What does the wire actually do? | [docs/protocol.md](docs/protocol.md) |
 | Why is live-start / wake / re-issue shaped this way? | [docs/streaming.md](docs/streaming.md) |
-| Motion / MQTT? | [docs/motion-events.md](docs/motion-events.md) |
+| Motion / MQTT? | [docs/activity-events.md](docs/activity-events.md) |
 | Triaging a stream that "barely works"? | [docs/diagnosis.md](docs/diagnosis.md) |

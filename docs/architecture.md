@@ -122,7 +122,7 @@ inside `p2p_streamer/`, because they're also used by the API client:
 - `meari_commands.py` — IoT command codes / device-event types.
 - `kcp_tunnel.py` — KCP implementation (segments, ACK batching, ARQ).
 - `msgsvr_codec.py` — Plaintext msgsvr frame encoder used by the LAN punch.
-- `motion_event.py` — Alarm-type classification.
+- `activity_event.py` — Alarm-type classification.
 - `turn_client.py` — Long-lived TURN allocation, refresh, ChannelData.
 
 ## Debug harness

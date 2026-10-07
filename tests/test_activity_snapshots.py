@@ -13,7 +13,7 @@ from unittest.mock import Mock
 from debug_tools.bootstrap import _bootstrap_integration_modules
 
 MODULES = _bootstrap_integration_modules()
-MOTION = importlib.import_module("custom_components.cloudplus.coordinator.motion")
+MOTION = importlib.import_module("custom_components.cloudplus.coordinator.activity")
 COORDINATOR = MODULES["coordinator"].CloudEdgeMeariCoordinator
 # Synthetic protocol bytes; no camera captures, credentials or device identifiers.
 JPEG = b"\xff\xd8\xff" + bytes(range(256)) * 8
@@ -35,7 +35,7 @@ class MotionSnapshotTests(unittest.TestCase):
     def setUp(self):
         self.api = Mock()
         self.api.download_snapshot.return_value = obfuscate(JPEG)
-        self.listener = MOTION.MotionEventListener(self.api)
+        self.listener = MOTION.ActivityEventListener(self.api)
         self.received = Mock()
         self.other = Mock()
         self.listener.register(42, SERIAL, self.received)
@@ -116,8 +116,8 @@ class SnapshotCacheTests(unittest.TestCase):
     def setUp(self):
         self.coord = SimpleNamespace(
             _latest_image=None, _latest_image_source="", _latest_image_generation=0,
-            _latest_image_updated_at=0.0, _motion_detected=False, _is_snap=False,
-            _fire_update=Mock(), _set_motion=Mock(), _video_to_jpeg=Mock(return_value=JPEG),
+            _latest_image_updated_at=0.0, _activity_detected=False, _is_snap=False,
+            _fire_update=Mock(), _set_activity=Mock(), _video_to_jpeg=Mock(return_value=JPEG),
             _snapshot_convert_lock=threading.Lock(),
         )
 
@@ -126,21 +126,21 @@ class SnapshotCacheTests(unittest.TestCase):
             self.assertEqual(self.coord._latest_image, JPEG)
             self.assertEqual(self.coord._latest_image_source, "event")
             self.assertGreater(self.coord._latest_image_updated_at, 0)
-        self.coord._set_motion.side_effect = check_image
-        COORDINATOR._note_motion(self.coord, "Motion", JPEG)
-        self.coord._set_motion.assert_called_once_with(True, "Motion")
+        self.coord._set_activity.side_effect = check_image
+        COORDINATOR._note_activity(self.coord, "Motion", JPEG)
+        self.coord._set_activity.assert_called_once_with(True, "Motion")
         self.assertEqual(self.coord._latest_image_generation, 1)
 
     def test_missing_image_does_not_claim_new_freshness(self):
-        COORDINATOR._note_motion(self.coord, "Motion")
+        COORDINATOR._note_activity(self.coord, "Motion")
         self.assertEqual(self.coord._latest_image_updated_at, 0)
         self.assertEqual(self.coord._latest_image_source, "")
-        self.coord._set_motion.assert_called_once_with(True, "Motion")
+        self.coord._set_activity.assert_called_once_with(True, "Motion")
 
     def test_inflight_video_conversion_cannot_replace_active_event_image(self):
         def convert(_codec, _payload):
-            COORDINATOR._note_motion(self.coord, "Motion", b"event-photo")
-            self.coord._motion_detected = True
+            COORDINATOR._note_activity(self.coord, "Motion", b"event-photo")
+            self.coord._activity_detected = True
             return JPEG
         self.coord._video_to_jpeg.side_effect = convert
         self.coord._snapshot_convert_lock.acquire()

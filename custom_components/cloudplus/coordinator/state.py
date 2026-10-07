@@ -52,12 +52,12 @@ class CoordinatorStateMixin:
         return self._latest_image_updated_at
 
     @property
-    def motion_type(self) -> str:
-        return self._motion_type
+    def activity_type(self) -> str:
+        return self._activity_type
 
     @property
-    def motion_detected(self) -> bool:
-        return self._motion_detected
+    def activity_detected(self) -> bool:
+        return self._activity_detected
 
     @property
     def device_uuid(self) -> str:
@@ -171,7 +171,7 @@ class CoordinatorStateMixin:
 
     def set_motion_wake_enabled(self, enabled: bool) -> None:
         self._motion_wake_enabled = bool(enabled)
-        if self._motion_wake_enabled and self._motion_detected:
+        if self._motion_wake_enabled and self._activity_detected:
             self._wake_event.set()
             self._extend_live_deadline()
             self._set_camera_awake(True)
@@ -253,9 +253,9 @@ class CoordinatorStateMixin:
         self._extend_live_deadline()
         self._set_camera_awake(True)
 
-    def register_motion_callback(self, cb: Callable[[], None]) -> Callable[[], None]:
-        self._motion_callbacks.append(cb)
-        return lambda: self._remove_callback(self._motion_callbacks, cb)
+    def register_activity_callback(self, cb: Callable[[], None]) -> Callable[[], None]:
+        self._activity_callbacks.append(cb)
+        return lambda: self._remove_callback(self._activity_callbacks, cb)
 
     def register_update_callback(self, cb: Callable[[], None]) -> Callable[[], None]:
         self._update_callbacks.append(cb)
@@ -277,10 +277,10 @@ class CoordinatorStateMixin:
         for cb in list(self._update_callbacks):
             self.hass.loop.call_soon_threadsafe(cb)
 
-    def _fire_motion(self) -> None:
+    def _fire_activity(self) -> None:
         if self.hass.loop.is_closed():
             return
-        for cb in list(self._motion_callbacks):
+        for cb in list(self._activity_callbacks):
             self.hass.loop.call_soon_threadsafe(cb)
 
     def _set_camera_awake(self, awake: bool) -> None:
@@ -290,21 +290,25 @@ class CoordinatorStateMixin:
         self._camera_awake = awake
         self._fire_update()
 
-    def _set_motion(self, detected: bool, motion_type: str = "") -> None:
+    def _set_activity(self, detected: bool, activity_type: str = "") -> None:
         detected = bool(detected)
-        motion_type = motion_type if detected else ""
-        changed = self._motion_detected != detected or self._motion_type != motion_type
-        self._motion_detected = detected
-        self._motion_type = motion_type
+        activity_type = activity_type if detected else ""
+        changed = (
+            self._activity_detected != detected or self._activity_type != activity_type
+        )
+        self._activity_detected = detected
+        self._activity_type = activity_type
         if changed:
-            self._fire_motion()
+            self._fire_activity()
             self._fire_update()
 
     def _extend_live_deadline(self, seconds: float | None = None) -> None:
         duration = float(seconds if seconds is not None else self._motion_timeout)
         self._live_deadline = max(self._live_deadline, time.monotonic() + duration)
 
-    def _note_motion(self, motion_type: str, event_image: bytes | None = None) -> None:
+    def _note_activity(
+        self, activity_type: str, event_image: bytes | None = None
+    ) -> None:
         if event_image:
             self._latest_image = event_image
             self._latest_image_source = "event"
@@ -315,7 +319,7 @@ class CoordinatorStateMixin:
             self._last_snapshot_convert_time = time.monotonic()
             self._fire_update()
         self._last_motion_time = time.monotonic()
-        self._set_motion(True, motion_type)
+        self._set_activity(True, activity_type)
         if self._is_snap and self._motion_wake_enabled:
             self._wake_event.set()
             self._extend_live_deadline()

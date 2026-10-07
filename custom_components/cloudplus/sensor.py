@@ -15,7 +15,7 @@ from homeassistant.const import PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import ALARM_TYPE_NAMES, DOMAIN, ACTIVITY_ALARM_TYPES
 from .coordinator import CloudEdgeMeariCoordinator
 from .entity import CloudEdgeMeariEntity, CloudEdgeMeariIotNumericEntity
 from .meari_commands import HUMIDITY, TEMPERATURE, WIFI_STRENGTH
@@ -120,7 +120,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up CloudEdge / Meari sensors from a config entry."""
     coord: CloudEdgeMeariCoordinator = hass.data[DOMAIN][entry.entry_id]
-    entities: list[SensorEntity] = []
+    entities: list[SensorEntity] = [CloudEdgeMeariActivitySensor(coord, entry)]
     if coord.is_battery_camera:
         entities.append(CloudEdgeMeariBatterySensor(coord, entry))
         entities.append(CloudEdgeMeariChargeStatusSensor(coord, entry))
@@ -149,6 +149,41 @@ class CloudEdgeMeariIotSensor(CloudEdgeMeariIotNumericEntity, SensorEntity):
         self._attr_suggested_display_precision = spec.precision
         self._attr_unique_id = f"{coordinator.device_uuid}_iot_sensor_{spec.code}"
         self._polled_iot_codes = (str(spec.code),)
+
+
+class CloudEdgeMeariActivitySensor(CloudEdgeMeariEntity, SensorEntity):
+    """Latest detected activity type, or "none" while idle."""
+
+    _attr_name = "Activity"
+    _attr_icon = "mdi:motion-sensor"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["none"] + [
+        ALARM_TYPE_NAMES[t] for t in sorted(ACTIVITY_ALARM_TYPES)
+    ]
+
+    def __init__(
+        self, coordinator: CloudEdgeMeariCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{coordinator.device_uuid}_activity"
+        self._unsub_activity: Any = None
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_activity = self._coordinator.register_activity_callback(
+            self._handle_update
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        await super().async_will_remove_from_hass()
+        if self._unsub_activity:
+            self._unsub_activity()
+
+    @property
+    def native_value(self) -> str:
+        if not self._coordinator.activity_detected:
+            return "none"
+        return self._coordinator.activity_type or "none"
 
 
 class CloudEdgeMeariChargeStatusSensor(CloudEdgeMeariEntity, SensorEntity):

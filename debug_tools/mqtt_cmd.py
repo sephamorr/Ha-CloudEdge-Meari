@@ -31,12 +31,12 @@ def _flatten(value, prefix: str = "") -> dict[str, object]:
 async def cmd_mqtt(args) -> int:
     mods = _bootstrap_integration_modules()
     api = _login_api_with_fallback(mods["api"].MeariApiClient, args)
-    motion = importlib.import_module("custom_components.cloudplus.coordinator.motion")
+    motion = importlib.import_module("custom_components.cloudplus.coordinator.activity")
 
-    logging.getLogger("custom_components.cloudplus.coordinator.motion").setLevel(
+    logging.getLogger("custom_components.cloudplus.coordinator.activity").setLevel(
         logging.DEBUG
     )
-    listener = motion.MotionEventListener(api)
+    listener = motion.ActivityEventListener(api)
     state: dict[str, object] = {}
     original = listener._handle_payload  # pylint: disable=protected-access
 

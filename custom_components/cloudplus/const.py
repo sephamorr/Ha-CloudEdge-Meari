@@ -77,7 +77,8 @@ PTZ_DIRECTIONS: dict[str, tuple[int, int]] = {
 }
 
 # Motion-related alarm types (from motion_detector.py)
-MOTION_ALARM_TYPES = {1, 2, 11, 20}
+# Baby monitors only report Noise (6) / Baby cry (7), never PIR/Motion.
+ACTIVITY_ALARM_TYPES = {1, 2, 6, 7, 11, 20}
 
 ALARM_TYPE_NAMES = {
     1: "PIR",

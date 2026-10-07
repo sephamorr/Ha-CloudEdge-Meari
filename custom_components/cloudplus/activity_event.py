@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .const import ALARM_TYPE_NAMES, MOTION_ALARM_TYPES
+from .const import ALARM_TYPE_NAMES, ACTIVITY_ALARM_TYPES
 
 _WRAPPER_KEYS = ("params", "data", "msg", "result", "items", "payload")
 _EVENT_KEYS = ("eventType", "alarmType", "imageAlertType", "alertType", "evt")
@@ -109,7 +109,7 @@ def _normalize(
         "evt_raw": evt_raw,
         "evt_int": evt_int,
         "evt_name": evt_name,
-        "is_motion": evt_int in MOTION_ALARM_TYPES,
+        "is_activity": evt_int in ACTIVITY_ALARM_TYPES,
         "device_id": device_id_str,
         "license_id": license_id_str,
         "event": str(raw.get("event", "")).strip(),
@@ -117,7 +117,7 @@ def _normalize(
     }
 
 
-def parse_motion_event(payload: bytes) -> dict[str, Any] | None:
+def parse_activity_event(payload: bytes) -> dict[str, Any] | None:
     """Parse MQTT payload into a normalized alarm-event dictionary.
 
     Returns None when payload is not a JSON alarm event payload.
@@ -145,7 +145,7 @@ def parse_motion_event(payload: bytes) -> dict[str, Any] | None:
         event = _normalize(raw, data, evt_raw)
         if first_event is None:
             first_event = event
-        if event["is_motion"]:
+        if event["is_activity"]:
             return event
 
     return first_event

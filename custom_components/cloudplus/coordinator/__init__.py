@@ -44,7 +44,7 @@ from ..p2p_streamer.codecs import (
     uses_timestamp_timed_mux,
 )
 from .iot import parse_capabilities
-from .motion import MotionEventListener
+from .activity import ActivityEventListener
 from .muxer import FfmpegMuxer
 from .state import CoordinatorStateMixin
 from .stream_server import StreamServer
@@ -128,8 +128,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         self._last_snapshot_convert_time = 0.0
         self._snapshot_requested_until = 0.0
         self._snapshot_convert_lock = threading.Lock()
-        self._motion_type = ""
-        self._motion_detected = False
+        self._activity_type = ""
+        self._activity_detected = False
         self._last_motion_time = 0.0
         self._motion_wake_enabled = True
         self._motion_timeout = DEFAULT_MOTION_TIMEOUT
@@ -150,9 +150,9 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         self._api: MeariApiClient | None = None
         self._p2p_streamer: P2PStreamer | None = None
         self._last_p2p_diagnostics: dict[str, Any] = {}
-        self._motion_listener: MotionEventListener | None = None
-        self._motion_listener_key: tuple[str, ...] | None = None
-        self._motion_listener_unsub: Callable[[], None] | None = None
+        self._activity_listener: ActivityEventListener | None = None
+        self._activity_listener_key: tuple[str, ...] | None = None
+        self._activity_listener_unsub: Callable[[], None] | None = None
         self._wake_event = threading.Event()
         self._idle_stop = threading.Event()
         self._idle_frame_ready = threading.Event()
@@ -202,7 +202,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         self._stream_started_keyframe = False
 
         self._update_callbacks: list[Callable[[], None]] = []
-        self._motion_callbacks: list[Callable[[], None]] = []
+        self._activity_callbacks: list[Callable[[], None]] = []
 
     async def async_start(self) -> None:
         if self._running:
@@ -230,7 +230,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
             await asyncio.to_thread(func)
 
     def _stop_blocking(self) -> None:
-        self._stop_motion_listener()
+        self._stop_activity_listener()
         self._idle_stop.set()
         self._stop_streamer(join_timeout=4)
         if self._idle_thread is not None:
@@ -260,10 +260,10 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
                 self._available = True
                 self._fire_update()
                 try:
-                    self._start_motion_listener(api)
+                    self._start_activity_listener(api)
                     self._session_loop()
                 finally:
-                    self._stop_motion_listener()
+                    self._stop_activity_listener()
                     self._stop_streamer(join_timeout=4)
                     self._api = None
             except (OSError, RuntimeError, ValueError, KeyError) as exc:
@@ -274,7 +274,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
                 # every entity at its last value until HA restarts.
                 _LOGGER.exception("Unexpected coordinator session loop failure")
             self._available = False
-            self._set_motion(False)
+            self._set_activity(False)
             self._set_camera_awake(False)
             self._fire_update()
             if self._running:
@@ -330,7 +330,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
                 next_grab_retry = time.monotonic() + idle_retry_s
 
             self._consume_wake_event()
-            if self._motion_detected and self._motion_wake_enabled:
+            if self._activity_detected and self._motion_wake_enabled:
                 self._live_deadline = max(
                     self._live_deadline,
                     self._last_motion_time + float(self._motion_timeout),
@@ -444,7 +444,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         if self._running and time.monotonic() < self._live_deadline:
             return
         self._request_streamer_stop()
-        self._set_motion(False)
+        self._set_activity(False)
         self._prime_idle_stream()
         if time.monotonic() >= self._live_deadline:
             self._set_camera_awake(False)
@@ -465,8 +465,8 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         except (OSError, RuntimeError, ValueError, KeyError) as exc:
             _LOGGER.debug("Wake failed for %s: %s", self._sn_num, exc)
 
-    def _start_motion_listener(self, api: MeariApiClient) -> None:
-        self._stop_motion_listener()
+    def _start_activity_listener(self, api: MeariApiClient) -> None:
+        self._stop_activity_listener()
         key = (
             self._email,
             self._country_code,
@@ -474,31 +474,31 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
             self._app_profile,
         )
         listeners = self.hass.data.setdefault(DOMAIN, {}).setdefault(
-            "_motion_listeners", {}
+            "_activity_listeners", {}
         )
         listener = listeners.get(key)
         if listener is None:
-            listener = MotionEventListener(api)
+            listener = ActivityEventListener(api)
             listeners[key] = listener
-        self._motion_listener_unsub = listener.register(
-            self._device_id, self._sn_num, self._note_motion
+        self._activity_listener_unsub = listener.register(
+            self._device_id, self._sn_num, self._note_activity
         )
-        self._motion_listener = listener
-        self._motion_listener_key = key
-        self._motion_listener.start()
+        self._activity_listener = listener
+        self._activity_listener_key = key
+        self._activity_listener.start()
 
-    def _stop_motion_listener(self) -> None:
-        unsub = self._motion_listener_unsub
-        listener = self._motion_listener
-        key = self._motion_listener_key
-        self._motion_listener_unsub = None
-        self._motion_listener = None
-        self._motion_listener_key = None
+    def _stop_activity_listener(self) -> None:
+        unsub = self._activity_listener_unsub
+        listener = self._activity_listener
+        key = self._activity_listener_key
+        self._activity_listener_unsub = None
+        self._activity_listener = None
+        self._activity_listener_key = None
         if unsub is not None:
             unsub()
         if listener is not None and not listener.has_callbacks:
             listener.stop()
-            listeners = self.hass.data.get(DOMAIN, {}).get("_motion_listeners", {})
+            listeners = self.hass.data.get(DOMAIN, {}).get("_activity_listeners", {})
             if key is not None and listeners.get(key) is listener:
                 listeners.pop(key, None)
 
@@ -707,7 +707,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
     def _maybe_convert_snapshot(self, codec: str, payload: bytes) -> None:
         if not self._snapshot_conversion_enabled or not payload:
             return
-        if self._motion_detected and self._latest_image_source == "event":
+        if self._activity_detected and self._latest_image_source == "event":
             return
         now = time.monotonic()
         interval = self._snapshot_convert_interval
@@ -735,7 +735,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
             jpeg = self._video_to_jpeg(codec, payload)
             # An event may arrive while ffmpeg is converting an older frame.
             if jpeg and not (
-                self._motion_detected and self._latest_image_source == "event"
+                self._activity_detected and self._latest_image_source == "event"
             ):
                 self._latest_image = jpeg
                 self._latest_image_source = "live"
