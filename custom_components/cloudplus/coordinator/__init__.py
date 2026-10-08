@@ -298,6 +298,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         next_grab_retry = time.monotonic() + idle_retry_s
         while self._running:
             now = time.monotonic()
+            self._expire_activity()
             if now - last_battery_poll >= BATTERY_POLL_INTERVAL:
                 self._poll_battery()
                 last_battery_poll = now
@@ -348,6 +349,7 @@ class CloudEdgeMeariCoordinator(CoordinatorStateMixin):
         last_status_poll = time.monotonic()
         while self._running:
             now = time.monotonic()
+            self._expire_activity()
             if self._stream_restart.is_set():
                 self._stream_restart.clear()
                 self._stop_streamer(join_timeout=2)
