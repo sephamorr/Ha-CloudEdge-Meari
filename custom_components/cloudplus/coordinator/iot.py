@@ -33,7 +33,13 @@ def parse_capabilities(device: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(parsed, Mapping):
         return {}
     caps = parsed.get("caps", parsed)
-    return dict(caps) if isinstance(caps, Mapping) else {}
+    if not isinstance(caps, Mapping):
+        return {}
+    caps = dict(caps)
+    # The vendor JSON keeps the capability version beside "caps", not inside it.
+    if "ver" not in caps and "ver" in parsed:
+        caps["ver"] = parsed["ver"]
+    return caps
 
 
 def normalize_iot_values(info: Mapping[Any, Any] | None) -> dict[int | str, Any]:

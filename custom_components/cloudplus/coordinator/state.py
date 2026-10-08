@@ -15,13 +15,25 @@ from ..const import (
     IOT_CODE_VIDEO_ENCRYPTION,
     PTZ_DIRECTIONS,
 )
+from ..meari_commands import ALARM_FREQUENCY
 from ..p2p_streamer import (
     quality_profile_labels,
     supports_adaptive_stream,
 )
-from .iot import capability_value, iot_value, normalize_iot_values, supports_feature
+from .iot import (
+    as_int,
+    capability_value,
+    iot_value,
+    normalize_iot_values,
+    supports_feature,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+# Alarm interval enum (IoT code 178) -> seconds; 0/unknown means not set.
+_ALARM_INTERVAL_S = {1: 60, 2: 120, 3: 180, 4: 300, 5: 600, 6: 30}
+# The camera re-triggers at the interval, so wait slightly longer before clearing.
+_ALARM_INTERVAL_GRACE_S = 5
 
 
 class CoordinatorStateMixin:
@@ -302,11 +314,18 @@ class CoordinatorStateMixin:
             self._fire_activity()
             self._fire_update()
 
+    def _activity_timeout(self) -> float:
+        """Camera alarm re-trigger interval if set, else the configured timeout."""
+        interval = _ALARM_INTERVAL_S.get(as_int(self.get_iot_value(ALARM_FREQUENCY)))
+        if interval is None:
+            return float(self._motion_timeout)
+        return interval + _ALARM_INTERVAL_GRACE_S
+
     def _expire_activity(self) -> None:
-        """Clear activity once no event arrived for the motion timeout."""
+        """Clear activity once no event arrived within the activity timeout."""
         if (
             self._activity_detected
-            and time.monotonic() - self._last_motion_time >= self._motion_timeout
+            and time.monotonic() - self._last_motion_time >= self._activity_timeout()
         ):
             self._set_activity(False)
 
