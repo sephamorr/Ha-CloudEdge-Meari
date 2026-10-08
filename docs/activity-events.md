@@ -18,7 +18,7 @@ payload shapes to expect.
   - **Username** = platform access id
   - **Password** = `mqttSignature`
   - **Clean session** = `true`
-  - **Keepalive** = `300`
+  - **Keepalive** = platform-config `keepalive` (60 s if the server sends none)
 - The app keeps **one Meari MQTT session per account** and dispatches events
   to cameras internally. Multiple MQTT sessions with the same user-id /
   client-id can make the broker disconnect older sessions — this is the
@@ -67,11 +67,16 @@ Alarm-type fields the parser looks for, in order:
 - `evt`
 
 See [`const.py`](../custom_components/cloudplus/const.py) `ALARM_TYPE_NAMES`
-and `MOTION_ALARM_TYPES` for the active mapping. The motion binary sensor
-fires for any alarm in `MOTION_ALARM_TYPES = {1, 2, 11, 20}` (PIR, Motion,
-Human body, Person). Other alarm types (Visitor, Noise, Package, etc.) are
-classified by `activity_event.py` but currently routed only to logs / future
-event sensors.
+and `ACTIVITY_ALARM_TYPES` for the active mapping. The Activity sensor reports
+the type for any alarm in `ACTIVITY_ALARM_TYPES = {1, 2, 6, 7, 11, 20}` (PIR,
+Motion, Noise, Baby cry, Human body, Person) and `none` otherwise. Baby
+monitors only ever report Noise / Baby cry. Other alarm types (Visitor,
+Package, etc.) are classified by `activity_event.py` but only logged.
+
+Events are one-shot with no end signal. The sensor returns to `none` once no
+event arrived for the camera's alarm re-trigger interval (IoT code `178`, plus
+one poll interval of slack for polled delivery) or, when that is unset, for the
+configured motion timeout.
 
 ## Fallback: cloud event polling
 
@@ -136,9 +141,9 @@ motion delivery permanently stopped until Home Assistant restarts.
   event-log poll will still surface every event within ~15 s, but the live
   MQTT push will keep flapping. **Use a dedicated HA account** if you want the
   sub-second MQTT push as well.
-- Alarm types observed in the wild but not currently in `MOTION_ALARM_TYPES`
-  are intentionally non-motion (e.g. `21 SD card removed`, `10 Tamper`).
-  Adding them to motion would create false positives.
+- Alarm types observed in the wild but not currently in `ACTIVITY_ALARM_TYPES`
+  are intentionally excluded (e.g. `21 SD card removed`, `10 Tamper`).
+  Adding them would create false positives.
 
 ## Event snapshots
 

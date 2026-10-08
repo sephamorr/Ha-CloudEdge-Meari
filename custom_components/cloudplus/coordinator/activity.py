@@ -184,6 +184,11 @@ class ActivityEventListener:
                 _LOGGER.debug("MQTT motion listener disconnected: rc=%s", rc)
 
         def on_message(_client, _userdata, msg):
+            _LOGGER.info(
+                "MQTT message on %s: %s",
+                msg.topic,
+                msg.payload[:2000].decode("utf-8", "replace"),
+            )
             self._handle_payload(msg.payload)
 
         try:

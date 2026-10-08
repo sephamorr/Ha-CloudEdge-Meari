@@ -11,6 +11,8 @@ from debug_tools.bootstrap import _bootstrap_integration_modules
 _bootstrap_integration_modules()
 IOT = importlib.import_module("custom_components.cloudplus.coordinator.iot")
 STATE = importlib.import_module("custom_components.cloudplus.coordinator.state")
+POLL = importlib.import_module("custom_components.cloudplus.coordinator.activity")
+GRACE = POLL.ALARM_POLL_INTERVAL + 5
 
 
 class FakeCoordinator(STATE.CoordinatorStateMixin):
@@ -49,10 +51,10 @@ class ActivityTimeoutTests(unittest.TestCase):
         for value, seconds in expected.items():
             with self.subTest(value=value):
                 coord = FakeCoordinator({178: value})
-                self.assertEqual(coord._activity_timeout(), seconds + 5)
+                self.assertEqual(coord._activity_timeout(), seconds + GRACE)
 
     def test_string_value_from_cloud_is_accepted(self):
-        self.assertEqual(FakeCoordinator({178: "6"})._activity_timeout(), 35)
+        self.assertEqual(FakeCoordinator({178: "6"})._activity_timeout(), 30 + GRACE)
 
     def test_unset_interval_falls_back_to_configured_timeout(self):
         for iot in ({}, {178: 0}, {178: 99}, {178: "bad"}):
@@ -68,13 +70,13 @@ class ExpireActivityTests(unittest.TestCase):
 
     def test_stays_active_before_timeout(self):
         coord = FakeCoordinator({178: 6})
-        self.expire_at(coord, 1000.0 + 34)
+        self.expire_at(coord, 1000.0 + 30 + GRACE - 1)
         self.assertTrue(coord._activity_detected)
         self.assertEqual(coord._activity_type, "Noise")
 
     def test_clears_after_timeout(self):
         coord = FakeCoordinator({178: 6})
-        self.expire_at(coord, 1000.0 + 35)
+        self.expire_at(coord, 1000.0 + 30 + GRACE)
         self.assertFalse(coord._activity_detected)
         self.assertEqual(coord._activity_type, "")
         coord._fire_activity.assert_called_once()

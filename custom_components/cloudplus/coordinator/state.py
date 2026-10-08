@@ -20,6 +20,7 @@ from ..p2p_streamer import (
     quality_profile_labels,
     supports_adaptive_stream,
 )
+from .activity import ALARM_POLL_INTERVAL
 from .iot import (
     as_int,
     capability_value,
@@ -32,8 +33,9 @@ _LOGGER = logging.getLogger(__name__)
 
 # Alarm interval enum (IoT code 178) -> seconds; 0/unknown means not set.
 _ALARM_INTERVAL_S = {1: 60, 2: 120, 3: 180, 4: 300, 5: 600, 6: 30}
-# The camera re-triggers at the interval, so wait slightly longer before clearing.
-_ALARM_INTERVAL_GRACE_S = 5
+# Events can reach us a full poll late, so consecutive arrivals may be further
+# apart than the camera's interval.
+_ALARM_INTERVAL_GRACE_S = ALARM_POLL_INTERVAL + 5
 
 
 class CoordinatorStateMixin:
