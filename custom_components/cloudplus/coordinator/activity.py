@@ -13,7 +13,7 @@ from typing import Any, Callable
 import paho.mqtt.client as mqtt
 
 from ..api import MeariApiClient
-from ..activity_event import parse_activity_event
+from ..activity_event import is_alarm_push, parse_activity_event
 
 _LOGGER = logging.getLogger(__name__)
 ALARM_POLL_INTERVAL = 15.0
@@ -119,6 +119,7 @@ class ActivityEventListener:
         ] = []
         self._lock = threading.Lock()
         self._stop_poll = threading.Event()
+        self._poll_now = threading.Event()
         self._poll_thread: threading.Thread | None = None
         self._seen_alarm_keys: set[tuple[str, str]] = set()
         self._poll_day: str = ""
@@ -190,6 +191,9 @@ class ActivityEventListener:
                 msg.payload[:2000].decode("utf-8", "replace"),
             )
             self._handle_payload(msg.payload)
+            if is_alarm_push(msg.payload):
+                # The push has no alarm type; the event log does.
+                self._poll_now.set()
 
         try:
             client = mqtt.Client(
@@ -252,6 +256,7 @@ class ActivityEventListener:
 
     def _stop_alarm_poll(self) -> None:
         self._stop_poll.set()
+        self._poll_now.set()
         if self._poll_thread is not None:
             self._poll_thread.join(timeout=2)
             self._poll_thread = None
@@ -276,7 +281,8 @@ class ActivityEventListener:
                     if self._reauthenticate_api()
                     else ALARM_POLL_ERROR_INTERVAL
                 )
-            self._stop_poll.wait(wait_s)
+            self._poll_now.wait(wait_s)
+            self._poll_now.clear()
 
     def _reauthenticate_api(self) -> bool:
         try:

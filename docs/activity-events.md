@@ -66,6 +66,13 @@ Alarm-type fields the parser looks for, in order:
 - `alertType`
 - `evt`
 
+MQTT alarm pushes look like `{"event": "alarm", "params": {"result": {"evt":
+"1", "msgid": "189", "deviceID": …, "alert": "device:Baby Monitor has detected
+noise", "url": …}}}`. Here `evt` is a flag, not the alarm type (a noise alert
+carries `evt=1`), so the parser ignores it for `event == "alarm"` messages. The
+push triggers an immediate event-log poll instead, which carries the real
+`eventType` and is de-duplicated by `msgID`. Every MQTT message is logged at
+INFO (`MQTT message on <topic>: <payload>`).
 See [`const.py`](../custom_components/cloudplus/const.py) `ALARM_TYPE_NAMES`
 and `ACTIVITY_ALARM_TYPES` for the active mapping. The Activity sensor reports
 the type for any alarm in `ACTIVITY_ALARM_TYPES = {1, 2, 6, 7, 11, 20}` (PIR,

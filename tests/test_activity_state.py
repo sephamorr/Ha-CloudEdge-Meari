@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import unittest
 from unittest.mock import Mock, patch
 
@@ -10,6 +11,8 @@ from debug_tools.bootstrap import _bootstrap_integration_modules
 
 _bootstrap_integration_modules()
 IOT = importlib.import_module("custom_components.cloudplus.coordinator.iot")
+EVENT = importlib.import_module("custom_components.cloudplus.activity_event")
+LISTENER = importlib.import_module("custom_components.cloudplus.coordinator.activity")
 STATE = importlib.import_module("custom_components.cloudplus.coordinator.state")
 POLL = importlib.import_module("custom_components.cloudplus.coordinator.activity")
 GRACE = POLL.ALARM_POLL_INTERVAL + 5
@@ -27,6 +30,50 @@ class FakeCoordinator(STATE.CoordinatorStateMixin):
 
     def get_iot_value(self, code):
         return self._iot.get(code)
+
+
+class AlarmPushTests(unittest.TestCase):
+    # Synthetic copy of a real noise push: evt=1 is a flag, not PIR.
+    PUSH = json.dumps(
+        {
+            "event": "alarm",
+            "params": {
+                "result": {
+                    "evt": "1",
+                    "msgid": "189",
+                    "deviceID": "42",
+                    "alert": "device:Camera has detected noise",
+                }
+            },
+        }
+    ).encode()
+
+    def test_alarm_push_is_detected(self):
+        self.assertTrue(EVENT.is_alarm_push(self.PUSH))
+        self.assertFalse(EVENT.is_alarm_push(b'{"event": "app"}'))
+        self.assertFalse(EVENT.is_alarm_push(b"not json"))
+        self.assertFalse(EVENT.is_alarm_push(b"[]"))
+
+    def test_evt_flag_is_not_used_as_alarm_type(self):
+        self.assertIsNone(EVENT.parse_activity_event(self.PUSH))
+
+    def test_push_does_not_notify_with_a_guessed_type(self):
+        listener = LISTENER.ActivityEventListener(Mock())
+        received = Mock()
+        listener.register(42, "sn", received)
+        listener._handle_payload(self.PUSH)
+        received.assert_not_called()
+
+    def test_explicit_type_in_a_push_is_still_used(self):
+        push = json.dumps(
+            {"event": "alarm", "params": {"eventType": 6, "deviceID": "42"}}
+        ).encode()
+        event = EVENT.parse_activity_event(push)
+        self.assertEqual(event["evt_name"], "Noise")
+
+    def test_evt_still_classifies_non_push_payloads(self):
+        event = EVENT.parse_activity_event(b'{"deviceID": "42", "evt": 2}')
+        self.assertEqual(event["evt_name"], "Motion")
 
 
 class ParseCapabilitiesTests(unittest.TestCase):

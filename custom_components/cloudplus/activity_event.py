@@ -117,6 +117,15 @@ def _normalize(
     }
 
 
+def is_alarm_push(payload: bytes) -> bool:
+    """True for an MQTT alarm push (``{"event": "alarm", ...}``)."""
+    try:
+        raw = json.loads(payload.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return False
+    return isinstance(raw, dict) and str(raw.get("event", "")).strip() == "alarm"
+
+
 def parse_activity_event(payload: bytes) -> dict[str, Any] | None:
     """Parse MQTT payload into a normalized alarm-event dictionary.
 
@@ -130,6 +139,8 @@ def parse_activity_event(payload: bytes) -> dict[str, Any] | None:
     if not isinstance(raw, dict):
         return None
 
+    # In alarm pushes "evt" is a flag, not the type (a noise alert carries evt=1).
+    event_keys = _EVENT_KEYS[:-1] if is_alarm_push(payload) else _EVENT_KEYS
     candidates = [_unwrap_event_dict(raw), raw]
     candidates.extend(_dicts(raw))
     seen: set[int] = set()
@@ -139,7 +150,7 @@ def parse_activity_event(payload: bytes) -> dict[str, Any] | None:
         if not data or id(data) in seen:
             continue
         seen.add(id(data))
-        evt_raw = _pick_first(data, _EVENT_KEYS)
+        evt_raw = _pick_first(data, event_keys)
         if evt_raw is None:
             continue
         event = _normalize(raw, data, evt_raw)
